@@ -49,6 +49,7 @@ class data_view(QMainWindow):
 
 
     def camera(self):
+        #카메라 2개 띄우기 위한 table
         # self.camera_table = QTableWidget(self)
         # self.camera_table.setFixedSize(800, 300)
         # self.camera_table.setColumnCount(1)
