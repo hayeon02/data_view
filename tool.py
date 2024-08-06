@@ -18,7 +18,7 @@ class data_view(QMainWindow):
     def view_IU(self):
         self.setWindowTitle('view')
         self.move(500, 100)
-        self.resize(1000, 800)
+        self.resize(1200, 800)
 
     def vehicle_data(self):
         self.vehicle_table = QTableWidget(self)
@@ -37,40 +37,60 @@ class data_view(QMainWindow):
         self.vehicle_table.setCellWidget(0, 2, self.status_label)
 
     def rpm_value(self):
-        self.rpm_label.setText()
-        # /current_motor_RPM
+        # rospy.Subscriber('/current_motor_RPM')
+        self.rpm_label.setText("rpm")
     def angle_value(self):
+        # rospy.Subscriber('/steering_angle')
         self.angle_label.setText()
-        # /steering_angle
-    def status_value(self):
-        self.status_label.setText()
-        # /manual_status
+    # def status_value(self):
+        #status_value = rospy.Subscriber('/manual_status')
+        # if status_value == 0:
+        #     self.status_label.setText("0")
+        # elif status_value = 1:
+        #     self.status_label.setText("0")
+        #
 
 
 
     def camera(self):
-        #카메라 2개 띄우기 위한 table
-        # self.camera_table = QTableWidget(self)
-        # self.camera_table.setFixedSize(800, 300)
-        # self.camera_table.setColumnCount(1)
-        # self.camera_table.setRowCount(1)
-
-        self.resize(800, 300)
-        self.video_widget = QVideoWidget(self)  # 비디오 표시
+        self.resize(700, 500)
 
         available_cameras = QMediaDevices.videoInputs()  # QMediaDevices: 사용 가능한 멀티미디어 입력 및 출력 장치에 대한 정보 제공
-        if available_cameras:
-            self.camera = QCamera(available_cameras[0])  # QCamera: 카메라 인터페이스 제공
-            self.capture_session = QMediaCaptureSession()  # QMediaCaptureSession: 오디오 및 비디오 콘텐츠 캡처 허용
-            self.capture_session.setCamera(self.camera)  # 여러 카메라 간 전환 가능
-            self.capture_session.setVideoOutput(self.video_widget)  # 이미 비디오 출력이 연결되어 있는 경우 새 비디오 출력으로 교체
-            self.camera.start()
+        self.video_widget1 = QVideoWidget(self) #객체가 생성한 비디오를 표시하는 위젯
+        self.video_widget2 = QVideoWidget(self)
+        self.video_widget3 = QVideoWidget(self)
+
+        self.camera1 = QCamera(available_cameras[0])  # QCamera: 카메라 인터페이스 제공
+        self.capture_session1 = QMediaCaptureSession()  # QMediaCaptureSession: 오디오 및 비디오 콘텐츠 캡처 허용
+        self.capture_session1.setCamera(self.camera1)  # 여러 카메라 간 전환 가능
+        self.capture_session1.setVideoOutput(self.video_widget1)  # 이미 비디오 출력이 연결되어 있는 경우 새 비디오 출력으로 교체
+        self.camera1.start()
+
+        self.camera2 = QCamera(available_cameras[1])
+        self.capture_session2 = QMediaCaptureSession()
+        self.capture_session2.setCamera(self.camera2)
+        self.capture_session2.setVideoOutput(self.video_widget2)
+        self.camera2.start()
+
+        self.camera3 = QCamera(available_cameras[2])
+        self.capture_session3 = QMediaCaptureSession()
+        self.capture_session3.setCamera(self.camera2)
+        self.capture_session3.setVideoOutput(self.video_widget2)
+        self.camera3.start()
 
     def seat(self):
         central_widget = QWidget(self)
-        layout = QHBoxLayout(central_widget)
-        layout.addWidget(self.vehicle_table)
-        layout.addWidget(self.video_widget)
+
+        layout1 = QVBoxLayout() #세로
+        layout1.addWidget(self.video_widget1)
+        layout1.addWidget(self.video_widget2)
+        layout1.addWidget(self.video_widget3)
+
+        layout2 = QHBoxLayout() #가로
+        layout2.addWidget(self.vehicle_table)
+        layout2.addLayout(layout1)
+
+        central_widget.setLayout(layout2)
         self.setCentralWidget(central_widget)
 
     def keyReleaseEvent(self, e):
