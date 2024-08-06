@@ -3,6 +3,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import *
 from PySide6.QtMultimedia import QMediaDevices, QCamera, QMediaCaptureSession
 from PySide6.QtMultimediaWidgets import QVideoWidget
+from PySide6.QtGui import QPainter,QColor, QPen
 
 rpm = 0
 angle = 0
@@ -53,7 +54,7 @@ class data_view(QMainWindow):
 
 
     def camera(self):
-        self.resize(700, 500)
+        self.resize(1200, 500)
 
         available_cameras = QMediaDevices.videoInputs()  # QMediaDevices: 사용 가능한 멀티미디어 입력 및 출력 장치에 대한 정보 제공
         self.video_widget1 = QVideoWidget(self) #객체가 생성한 비디오를 표시하는 위젯
@@ -83,12 +84,12 @@ class data_view(QMainWindow):
 
         layout1 = QVBoxLayout() #세로
         layout1.addWidget(self.video_widget1)
-        layout1.addWidget(self.video_widget2)
         layout1.addWidget(self.video_widget3)
 
         layout2 = QHBoxLayout() #가로
         layout2.addWidget(self.vehicle_table)
         layout2.addLayout(layout1)
+        layout2.addWidget(self.video_widget2)
 
         central_widget.setLayout(layout2)
         self.setCentralWidget(central_widget)
