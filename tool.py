@@ -60,6 +60,7 @@ class data_view(QMainWindow):
         self.video_widget1 = QVideoWidget(self) #객체가 생성한 비디오를 표시하는 위젯
         self.video_widget2 = QVideoWidget(self)
         self.video_widget3 = QVideoWidget(self)
+        self.video_widget4 = QVideoWidget(self)
 
         self.camera1 = QCamera(available_cameras[0])  # QCamera: 카메라 인터페이스 제공
         self.capture_session1 = QMediaCaptureSession()  # QMediaCaptureSession: 오디오 및 비디오 콘텐츠 캡처 허용
@@ -75,9 +76,15 @@ class data_view(QMainWindow):
 
         self.camera3 = QCamera(available_cameras[2])
         self.capture_session3 = QMediaCaptureSession()
-        self.capture_session3.setCamera(self.camera2)
-        self.capture_session3.setVideoOutput(self.video_widget2)
+        self.capture_session3.setCamera(self.camera3)
+        self.capture_session3.setVideoOutput(self.video_widget3)
         self.camera3.start()
+
+        self.camera4 = QCamera(available_cameras[3])
+        self.capture_session4 = QMediaCaptureSession()
+        self.capture_session4.setCamera(self.camera4)
+        self.capture_session4.setVideoOutput(self.video_widget4)
+        self.camera4.start()
 
     def seat(self):
         central_widget = QWidget(self)
@@ -90,6 +97,7 @@ class data_view(QMainWindow):
         layout2.addWidget(self.vehicle_table)
         layout2.addLayout(layout1)
         layout2.addWidget(self.video_widget2)
+        layout2.addWidget(self.video_widget4)
 
         central_widget.setLayout(layout2)
         self.setCentralWidget(central_widget)
