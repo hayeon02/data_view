@@ -1,5 +1,6 @@
 import sys
 import rospy
+import math
 from PySide6.QtWidgets import *
 from PySide6.QtMultimedia import *
 from PySide6.QtMultimediaWidgets import *
@@ -16,7 +17,7 @@ class vehicle_data(QWidget):
         self.vehicle_data()
 
         self.rpm = 0
-        self.angle = 0
+        self.gear = 0
         self.status = 0
 
     def vehicle_data(self):
@@ -24,28 +25,27 @@ class vehicle_data(QWidget):
         self.vehicle_table.setFixedSize(320, 60)
         self.vehicle_table.setColumnCount(3)
         self.vehicle_table.setRowCount(1)
-        self.vehicle_table.setHorizontalHeaderLabels(["RPM", "Angle", "Status"])
+        self.vehicle_table.setHorizontalHeaderLabels(["RPM", "Gear", "Status"])
 
         self.rpm = QLabel('rpm', self)
-        self.angle = QLabel('angle', self)
+        self.gear = QLabel('gear', self)
         self.status = QLabel('status', self)
 
-        self.updateRPM(self.rpm)
-        self.updateAngle(self.angle)
-        self.updateStatus(self.status)
+        self.update_rpm(self.rpm)
+        self.update_gear(self.gear)
+        self.update_status(self.status)
 
         self.vehicle_table.setCellWidget(0, 0, self.rpm)
-        self.vehicle_table.setCellWidget(0, 1, self.angle)
+        self.vehicle_table.setCellWidget(0, 1, self.gear)
         self.vehicle_table.setCellWidget(0, 2, self.status)
 
     def load_data(self):
         rospy.init_node('listener_vehicle_data')
-        rospy.Subscriber("/current_motor_RPM", UInt32, self.updateRPM)
-        rospy.Subscriber("/steering_angle", Float32, self.updateAngle)
-        rospy.Subscriber("/manual_status", Joy, self.updateStatus)
+        rospy.Subscriber("/current_motor_RPM", UInt32, self.update_rpm)
+        rospy.Subscriber("/manual_status", Joy, self.update_status)
         rospy.spin()
 
-    def updateRPM(self, data): #바퀴 둘레 길이 * rpm
+    def update_rpm(self, data): #바퀴 둘레 길이 * rpm
         self.rpm = data.data
         wheel_size = 3.14 * (바퀴 지름)
         speed_m = wheel_size * (self.rpm / 60) * (기어비)
@@ -53,27 +53,17 @@ class vehicle_data(QWidget):
         speed_km = speed_m * 3.6
         self.rpm.setText(str(speed_km))
 
-    def updateAngle(self, data):
-        #라디안(57.2958) -> 도 = 라디안 * (180/3.14)
-        self.angle = data.data
-        degree = self.angle * (180 / 3.14)
-        if degree == 0:
-            angle_status = 0
-        elif degree > 0:
-            angle_status = 1
-        else:
-            angle_status = -1
+    def update_gear(self, data):
+        if self.gear == '':
+            self.gear.setText("P") #주차
+        elif self.gear == '':
+            self.gear.setText("R") #후진
+        elif self.gear == '':
+            self.gear.setText("N") #중립
+        elif self.gear == '':
+            self.gear.setText("D") #주행
 
-        # if self.angle == '':
-        #     self.angle.setText("P") #주차
-        # elif self.angle == '':
-        #     self.angle.setText("R") #후진
-        # elif self.angle == '':
-        #     self.angle.setText("N") #중립
-        # elif self.angle == '':
-        #     self.angle.setText("D") #주행
-
-    def updateStatus(self, data):
+    def update_status(self, data):
         if data.buttons[1]:
             self.status = data.buttons[1]
             self.status.setText("Manual")
@@ -84,6 +74,19 @@ class vehicle_view(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFixedSize(300, 300)
+        self.angle = 0.0
+        self.expected_value = 0.0
+
+    def load_data(self):
+        rospy.init_node('listener_vehicle_data')
+        rospy.Subscriber("/steering_angle", Float32, self.vehicle_line)
+        rospy.spin()
+
+    def vehicle_line(self, data):
+        self.angle = data.data
+        degree = self.angle * (180/3.14)
+        self.expected_value = 110 / math.cos(degree)
+
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -101,11 +104,9 @@ class vehicle_view(QMainWindow):
         painter.drawRect(wheel4)
 
         painter.setPen(QColor(255, 0, 0))
-        painter.drawLine(QPoint(105, 0), QPoint(105, 80))
-        painter.drawLine(QPoint(215, 0), QPoint(215,80))
 
-def vehicle_line(angle_status):
-    # 차선 방향 변경
+        painter.drawLine(QPoint(105, self.expected_value), QPoint(105, 80))
+        painter.drawLine(QPoint(215, self.expected_value), QPoint(215,80))
 
 class data_view(QMainWindow):
     def __init__(self):
