@@ -5,7 +5,6 @@ from PySide6.QtMultimediaWidgets import *
 from PySide6.QtGui import *
 from PySide6.QtCore import *
 
-# 초기 차량 데이터 (예시)
 rpm = 0
 angle = 0
 status = 0
@@ -16,6 +15,18 @@ class vehicle_data(QWidget):
         self.setFixedSize(320, 60)
         self.vehicle_data()
 
+    def updateRPM(self, rpm):
+        self.rpm.setText(str(rpm))
+    #     / current_motor_RPM
+
+    def updateAngle(self, angle):
+        self.angle.setText(str(angle))
+    #     / steering_angle
+
+    def updateStatus(self, status):
+        self.status.setText(str(status))
+    #     / manual_status
+
     def vehicle_data(self):
         self.vehicle_table = QTableWidget(self)
         self.vehicle_table.setFixedSize(320, 60)
@@ -23,22 +34,17 @@ class vehicle_data(QWidget):
         self.vehicle_table.setRowCount(1)
         self.vehicle_table.setHorizontalHeaderLabels(["RPM", "Angle", "Status"])
 
-        self.rpm_label = QLabel('rpm', self)
-        self.angle_label = QLabel('angle', self)
-        self.status_label = QLabel('status', self)
+        self.rpm = QLabel('rpm', self)
+        self.angle = QLabel('angle', self)
+        self.status = QLabel('status', self)
 
-        self.vehicle_table.setCellWidget(0, 0, self.rpm_label)
-        self.vehicle_table.setCellWidget(0, 1, self.angle_label)
-        self.vehicle_table.setCellWidget(0, 2, self.status_label)
+        self.updateRPM(rpm)
+        self.updateAngle(angle)
+        self.updateStatus(status)
 
-    def updateRPM(self, rpm):
-        self.rpm_label.setText(str(rpm))
-
-    def updateAngle(self, angle):
-        self.angle_label.setText(str(angle))
-
-    def updateStatus(self, status):
-        self.status_label.setText(str(status))
+        self.vehicle_table.setCellWidget(0, 0, self.rpm)
+        self.vehicle_table.setCellWidget(0, 1, self.angle)
+        self.vehicle_table.setCellWidget(0, 2, self.status)
 
 class vehicle_view(QMainWindow):
     def __init__(self, parent=None):
@@ -47,11 +53,11 @@ class vehicle_view(QMainWindow):
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        car = QRect(120, 40, 80, 150)
-        wheel1 = QRect(100, 50, 10, 30)
-        wheel2 = QRect(100, 150, 10, 30)
-        wheel3 = QRect(210, 50, 10, 30)
-        wheel4 = QRect(210, 150, 10, 30)
+        car = QRect(120, 70, 80, 150)
+        wheel1 = QRect(100, 80, 10, 30)
+        wheel2 = QRect(100, 180, 10, 30)
+        wheel3 = QRect(210, 80, 10, 30)
+        wheel4 = QRect(210, 180, 10, 30)
 
         painter.setBrush(QColor(0, 0, 0))
         painter.drawRect(car)
@@ -61,8 +67,8 @@ class vehicle_view(QMainWindow):
         painter.drawRect(wheel4)
 
         painter.setPen(QColor(255, 0, 0))
-        painter.drawLine(QPoint(105, 0), QPoint(105, 50))
-        painter.drawLine(QPoint(215, 0), QPoint(215, 50))
+        painter.drawLine(QPoint(105, 0), QPoint(105, 80))
+        painter.drawLine(QPoint(215, 0), QPoint(215,80))
 
 class data_view(QMainWindow):
     def __init__(self):
