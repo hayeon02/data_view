@@ -1,13 +1,13 @@
 import sys
+import rospy
 from PySide6.QtWidgets import *
 from PySide6.QtMultimedia import *
 from PySide6.QtMultimediaWidgets import *
 from PySide6.QtGui import *
 from PySide6.QtCore import *
-
-rpm = 0
-angle = 0
-status = 0
+from std_msgs.msg import UInt32
+from std_msgs.msg import Float32
+from sensor_msgs.msg import Joy
 
 class vehicle_data(QWidget):
     def __init__(self, parent=None):
@@ -15,17 +15,9 @@ class vehicle_data(QWidget):
         self.setFixedSize(320, 60)
         self.vehicle_data()
 
-    def updateRPM(self, rpm):
-        self.rpm.setText(str(rpm))
-    #     / current_motor_RPM
-
-    def updateAngle(self, angle):
-        self.angle.setText(str(angle))
-    #     / steering_angle
-
-    def updateStatus(self, status):
-        self.status.setText(str(status))
-    #     / manual_status
+        self.rpm = 0
+        self.angle = 0
+        self.status = 0
 
     def vehicle_data(self):
         self.vehicle_table = QTableWidget(self)
@@ -38,13 +30,55 @@ class vehicle_data(QWidget):
         self.angle = QLabel('angle', self)
         self.status = QLabel('status', self)
 
-        self.updateRPM(rpm)
-        self.updateAngle(angle)
-        self.updateStatus(status)
+        self.updateRPM(self.rpm)
+        self.updateAngle(self.angle)
+        self.updateStatus(self.status)
 
         self.vehicle_table.setCellWidget(0, 0, self.rpm)
         self.vehicle_table.setCellWidget(0, 1, self.angle)
         self.vehicle_table.setCellWidget(0, 2, self.status)
+
+    def load_data(self):
+        rospy.init_node('listener_vehicle_data')
+        rospy.Subscriber("/current_motor_RPM", UInt32, self.updateRPM)
+        rospy.Subscriber("/steering_angle", Float32, self.updateAngle)
+        rospy.Subscriber("/manual_status", Joy, self.updateStatus)
+        rospy.spin()
+
+    def updateRPM(self, data): #바퀴 둘레 길이 * rpm
+        self.rpm = data.data
+        wheel_size = 3.14 * (바퀴 지름)
+        speed_m = wheel_size * (self.rpm / 60) * (기어비)
+        #기어비: 드라이브 기어 이빨 수(구동 기어) / 드리븐 기어 이빨 수(수동 기어)
+        speed_km = speed_m * 3.6
+        self.rpm.setText(str(speed_km))
+
+    def updateAngle(self, data):
+        #라디안(57.2958) -> 도 = 라디안 * (180/3.14)
+        self.angle = data.data
+        degree = self.angle * (180 / 3.14)
+        if degree == 0:
+            angle_status = 0
+        elif degree > 0:
+            angle_status = 1
+        else:
+            angle_status = -1
+
+        # if self.angle == '':
+        #     self.angle.setText("P") #주차
+        # elif self.angle == '':
+        #     self.angle.setText("R") #후진
+        # elif self.angle == '':
+        #     self.angle.setText("N") #중립
+        # elif self.angle == '':
+        #     self.angle.setText("D") #주행
+
+    def updateStatus(self, data):
+        if data.buttons[1]:
+            self.status = data.buttons[1]
+            self.status.setText("Manual")
+        else:
+            self.status.setText("Auto")
 
 class vehicle_view(QMainWindow):
     def __init__(self, parent=None):
@@ -69,6 +103,9 @@ class vehicle_view(QMainWindow):
         painter.setPen(QColor(255, 0, 0))
         painter.drawLine(QPoint(105, 0), QPoint(105, 80))
         painter.drawLine(QPoint(215, 0), QPoint(215,80))
+
+def vehicle_line(angle_status):
+    # 차선 방향 변경
 
 class data_view(QMainWindow):
     def __init__(self):
