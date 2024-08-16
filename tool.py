@@ -47,11 +47,7 @@ class vehicle_data(QWidget):
 
     def update_rpm(self, data): #바퀴 둘레 길이 * rpm
         self.rpm = data.data
-        wheel_size = 3.14 * (바퀴 지름)
-        speed_m = wheel_size * (self.rpm / 60) * (기어비)
-        #기어비: 드라이브 기어 이빨 수(구동 기어) / 드리븐 기어 이빨 수(수동 기어)
-        speed_km = speed_m * 3.6
-        self.rpm.setText(str(speed_km))
+        self.rpm.setText(str(self.rpm))
 
     def update_gear(self, data):
         if self.gear == '':
@@ -78,7 +74,7 @@ class vehicle_view(QMainWindow):
         self.expected_value = 0.0
 
     def load_data(self):
-        rospy.init_node('listener_vehicle_data')
+        rospy.init_node('listener_vehicle_angle_data')
         rospy.Subscriber("/steering_angle", Float32, self.vehicle_line)
         rospy.spin()
 
