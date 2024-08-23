@@ -95,7 +95,6 @@ class CarWidget(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
 
-        # Drawing the car
         car = QRect(120, 70, 80, 150)
         wheel1 = QRect(100, 80, 10, 30)
         wheel2 = QRect(100, 180, 10, 30)
