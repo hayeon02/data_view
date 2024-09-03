@@ -1,3 +1,4 @@
+#카메라
 import sys
 from PySide6.QtWidgets import *
 from PySide6.QtMultimedia import *
