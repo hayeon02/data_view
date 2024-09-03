@@ -1,91 +1,102 @@
 import sys
-# import rospy
 import math
+import rospy
 from PySide6.QtWidgets import *
-from PySide6.QtMultimedia import *
-from PySide6.QtMultimediaWidgets import *
 from PySide6.QtGui import *
 from PySide6.QtCore import *
-# from std_msgs.msg import UInt32
-# from std_msgs.msg import Float32
-# from sensor_msgs.msg import Joy
+from std_msgs.msg import UInt32
+from sensor_msgs.msg import Joy
 
-class vehicle_data(QWidget):
+
+class VehicleView(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedSize(320, 60)
-        self.vehicle_data()
+        self.setFixedSize(620, 300)
 
+        #rpm, steer, mode 값 초기화
         self.rpm = 0
-        self.gear = 0
-        self.status = 0
+        self.steer = 512
+        self.mode = 'M'
 
-    def vehicle_data(self):
-        self.vehicle_table = QTableWidget(self)
-        self.vehicle_table.setFixedSize(320, 60)
-        self.vehicle_table.setColumnCount(3)
-        self.vehicle_table.setRowCount(1)
-        self.vehicle_table.setHorizontalHeaderLabels(["RPM", "Gear", "Status"])
+        #노드 생성
+        rospy.init_node('vehicle_node')
 
-        self.rpm = QLabel('rpm', self)
-        self.gear = QLabel('gear', self)
-        self.status = QLabel('status', self)
+        self.rpm_sub = rospy.Subscriber('/current_motor_RPM', UInt32, self.update_rpm)
+        self.steer_sub = rospy.Subscriber('/current_steer', UInt32, self.update_steer)
+        self.mode_sub = rospy.Subscriber('/manual_status', Joy, self.update_mode)
 
-        # self.update_rpm(self.rpm)
-        # self.update_gear(self.gear)
-        # self.update_status(self.status)
+        self.init_ui()
 
-        self.vehicle_table.setCellWidget(0, 0, self.rpm)
-        self.vehicle_table.setCellWidget(0, 1, self.gear)
-        self.vehicle_table.setCellWidget(0, 2, self.status)
+        #100ms마다 vehicle view 갱신
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_ui) #일정 시간이 지나면 timeout 신호 발생, 발생할때마다 update_ui 메서드 호출
+        self.timer.start(100) #단위: 밀리초(ms) 100ms = 0.1s
 
-    # def load_data(self):
-    #     rospy.init_node('listener_vehicle_data')
-    #     rospy.Subscriber("/current_motor_RPM", UInt32, self.update_rpm)
-    #     rospy.Subscriber("/manual_status", Joy, self.update_status)
-    #     rospy.spin()
+    # 차량 정보(표형-index)
+    def init_ui(self):
+        self.table = QTableWidget(1, 3, self)
+        self.table.setHorizontalHeaderLabels(['RPM', 'Steer', 'Mode'])
+        self.table.setFixedSize(320, 60)
+        self.table.setItem(0, 0, QTableWidgetItem(str(self.rpm)))
+        self.table.setItem(0, 1, QTableWidgetItem(str(self.steer)))
+        self.table.setItem(0, 2, QTableWidgetItem(self.mode))
 
-    # def update_rpm(self, data): #바퀴 둘레 길이 * rpm
-    #     self.rpm = data.data
-    #     self.rpm.setText(str(self.rpm))
+        self.car_widget = CarWidget(self)
 
-    # def update_gear(self, data):
-    #     if self.gear == '':
-    #         self.gear.setText("P") #주차
-    #     elif self.gear == '':
-    #         self.gear.setText("R") #후진
-    #     elif self.gear == '':
-    #         self.gear.setText("N") #중립
-    #     elif self.gear == '':
-    #         self.gear.setText("D") #주행
+        layout = QVBoxLayout()
+        layout.addWidget(self.table)
+        layout.addWidget(self.car_widget)
+        self.setLayout(layout)
 
-    # def update_status(self, data):
-    #     if data.buttons[1]:
-    #         self.status = data.buttons[1]
-    #         self.status.setText("Manual")
-    #     else:
-    #         self.status.setText("Auto")
+    # 차량 정보(표형-값(변하는 값))
+    def update_ui(self):
+        self.table.setItem(0, 0, QTableWidgetItem(str(self.rpm)))
+        self.table.setItem(0, 1, QTableWidgetItem(str(self.steer)))
+        self.table.setItem(0, 2, QTableWidgetItem(self.mode))
+        self.car_widget.update_line()  # Update CarWidget when data changes
 
-class vehicle_view(QMainWindow):
+    def update_rpm(self, msg: UInt32):
+        self.rpm = msg.data
+
+    def update_steer(self, msg: UInt32):
+        self.steer = msg.data
+
+    def update_mode(self, msg: Joy):
+        self.mode = 'A' if msg.buttons[4] == 0 else 'M'
+
+
+class CarWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFixedSize(300, 300)
-        self.angle = 0.0
-        self.expected_value = 0.0
 
-    # def load_data(self):
-    #     rospy.init_node('listener_vehicle_angle_data')
-    #     rospy.Subscriber("/steering_angle", Float32, self.vehicle_line)
-    #     rospy.spin()
+    #차량 이동 선 업데이트
+    def update_line(self):
+        if isinstance(self.parent(), VehicleView):
+            self.steer = self.parent().steer
 
-    # def vehicle_line(self, data):
-    #     self.angle = data.data
-    #     degree = self.angle * (180/3.14)
-    #     self.expected_value = 110 / math.cos(degree)
+        s_de = (self.steer - 512) * (25 / 512)
+        s_ra = math.radians(s_de)
 
+        if s_ra < 0:
+            t_ra = 1.57 + s_ra
+        elif s_ra > 0:
+            t_ra = -1.57 + s_ra
+        else:
+            self.a = 0
+            self.b = 100
+            return
 
+        m = math.tan(t_ra)
+        self.a = 100 / ((m**2) + 1)
+        self.b = self.a * m
+
+        self.update()
+
+    #차량 이미지
     def paintEvent(self, event):
         painter = QPainter(self)
+
         car = QRect(120, 70, 80, 150)
         wheel1 = QRect(100, 80, 10, 30)
         wheel2 = QRect(100, 180, 10, 30)
@@ -100,38 +111,28 @@ class vehicle_view(QMainWindow):
         painter.drawRect(wheel4)
 
         painter.setPen(QColor(255, 0, 0))
+        painter.drawLine(QPoint(self.a + 105, self.b), QPoint(105, 80))
+        painter.drawLine(QPoint((self.a + 215), self.b), QPoint(215, 80))
 
-        painter.drawLine(QPoint(105, self.expected_value), QPoint(105, 80))
-        painter.drawLine(QPoint(215, self.expected_value), QPoint(215,80))
 
-class data_view(QMainWindow):
+class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.ui()
-        self.setupLayout()
-
-    def ui(self):
         self.setWindowTitle('Vehicle Data View')
         self.setGeometry(500, 100, 1200, 800)
+        self.init_ui()
 
-    def setupLayout(self):
-        central_widget = QWidget(self)
-        vehicle_data_widget = vehicle_data(self)
-        vehicle_view_widget = vehicle_view(self)
-
-        layout3 = QVBoxLayout()
-        layout3.addWidget(vehicle_data_widget)
-        layout3.addWidget(vehicle_view_widget)
-
-        central_widget.setLayout(layout3)
+    #배치
+    def init_ui(self):
+        central_widget = VehicleView(self)
         self.setCentralWidget(central_widget)
 
-    def keyReleaseEvent(self, event):
-        if event.key() == Qt.Key_Escape:
-            self.close()
+def main():
+    app = QApplication(sys.argv)
+    main_win = MainWindow()
+    main_win.show()
+    sys.exit(app.exec())
+
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    ex = data_view()
-    ex.show()
-    sys.exit(app.exec())
+    main()
