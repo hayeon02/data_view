@@ -1,81 +1,132 @@
 import sys
-import rospy
-from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QWidget, QHBoxLayout
-from PySide6.QtGui import QImage, QPixmap
-from PySide6.QtCore import QTimer, Qt
-from cv_bridge import CvBridge
-from sensor_msgs.msg import Image
+from PySide6.QtWidgets import *
+from PySide6.QtMultimedia import *
+from PySide6.QtMultimediaWidgets import *
+from PySide6.QtGui import *
+from PySide6.QtCore import *
 
-class CameraView(QWidget):
+class vehicle_data(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(320, 60)
+        self.vehicle_data()
+
+        self.rpm = 0
+        self.gear = 0
+        self.status = 0
+
+    def vehicle_data(self):
+        self.vehicle_table = QTableWidget(self)
+        self.vehicle_table.setFixedSize(320, 60)
+        self.vehicle_table.setColumnCount(3)
+        self.vehicle_table.setRowCount(1)
+        self.vehicle_table.setHorizontalHeaderLabels(["RPM", "Gear", "Status"])
+
+        self.rpm = QLabel('rpm', self)
+        self.gear = QLabel('gear', self)
+        self.status = QLabel('status', self)
+
+        # self.update_rpm(self.rpm)
+        # self.update_gear(self.gear)
+        # self.update_status(self.status)
+
+        self.vehicle_table.setCellWidget(0, 0, self.rpm)
+        self.vehicle_table.setCellWidget(0, 1, self.gear)
+        self.vehicle_table.setCellWidget(0, 2, self.status)
+
+class vehicle_view(QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(300, 300)
+        self.angle = 0.0
+
+    def vehicle_line(self, data): # 라디안(57.2958) -> 도 = 라디안 * (180/3.14)
+        self.angle = data.data
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        car = QRect(120, 70, 80, 150)
+        wheel1 = QRect(100, 80, 10, 30)
+        wheel2 = QRect(100, 180, 10, 30)
+        wheel3 = QRect(210, 80, 10, 30)
+        wheel4 = QRect(210, 180, 10, 30)
+
+        painter.setBrush(QColor(0, 0, 0))
+        painter.drawRect(car)
+        painter.drawRect(wheel1)
+        painter.drawRect(wheel2)
+        painter.drawRect(wheel3)
+        painter.drawRect(wheel4)
+
+        painter.setPen(QColor(255, 0, 0))
+
+        painter.drawLine(QPoint(105, self.angle), QPoint(105, 80))
+        painter.drawLine(QPoint(215, self.angle), QPoint(215,80))
+
+
+
+class data_view(QMainWindow):
     def __init__(self):
         super().__init__()
         self.ui()
-
-        self.bridge = CvBridge()
-        rospy.init_node('camera_node', anonymous=True)
-        self.camera_sub1 = rospy.Subscriber('/usb_cam_1/image_raw', Image, self.update_camera1)
-        self.camera_sub2 = rospy.Subscriber('/usb_cam_2/image_raw', Image, self.update_camera2)
+        self.cameras()
+        self.setupLayout()
 
     def ui(self):
-        self.setGeometry(100, 100, 300, 200)
+        self.setWindowTitle('Vehicle Data View')
+        self.setGeometry(500, 100, 1200, 800)
 
-        self.label1 = QLabel(self)
-        self.label1.setAlignment(Qt.AlignCenter)
+    def cameras(self):
+        available_cameras = QMediaDevices.videoInputs()
 
-        self.label2 = QLabel(self)
-        self.label2.setAlignment(Qt.AlignCenter)
+        # 카메라 및 세션 초기화
+        self.video_widgets = []
+        self.cameras = []
+        self.capture_sessions = []
 
-        self.layout = QVBoxLayout(self)
-        self.layout.addWidget(self.label1)
-        self.layout.addWidget(self.label2)
+        for i in range(4):
+            video_widget = QVideoWidget(self)
+            camera = QCamera(available_cameras[i])
+            capture_session = QMediaCaptureSession()
+            capture_session.setCamera(camera)
+            capture_session.setVideoOutput(video_widget)
+            camera.start()
 
-    def update_camera1(self, msg: Image):
-        cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+            self.video_widgets.append(video_widget)
+            self.cameras.append(camera)
+            self.capture_sessions.append(capture_session)
 
-        height, width, channel = cv_image.shape
-        bytes_per_line = 3 * width
-        q_image = QImage(cv_image.data, width, height, bytes_per_line, QImage.Format_BGR888)
-
-        pixmap = QPixmap.fromImage(q_image)
-        pixmap = pixmap.scaled(400, 300, Qt.KeepAspectRatio)
-
-        self.label1.setPixmap(pixmap)
-
-    def update_camera2(self, msg: Image):
-        cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-
-        height, width, channel = cv_image.shape
-        bytes_per_line = 3 * width
-        q_image = QImage(cv_image.data, width, height, bytes_per_line, QImage.Format_BGR888)
-
-        pixmap = QPixmap.fromImage(q_image)
-        pixmap = pixmap.scaled(400, 300, Qt.KeepAspectRatio)
-
-        self.label2.setPixmap(pixmap)
-
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle('Camera')
-        self.setGeometry(100, 100, 300, 200)
-        self.init_ui()
-
-    def init_ui(self):
+    def setupLayout(self):
         central_widget = QWidget(self)
+        vehicle_data_widget = vehicle_data(self)
+        vehicle_view_widget = vehicle_view(self)
 
-        camera_widget = CameraView()
+        layout1 = QVBoxLayout()
+        layout1.addWidget(self.video_widgets[0])
+        layout1.addWidget(self.video_widgets[2])
 
-        layout = QHBoxLayout()
-        layout.addWidget(camera_widget)
+        layout2 = QVBoxLayout()
+        layout2.addWidget(self.video_widgets[1])
+        layout2.addWidget(self.video_widgets[3])
 
-        central_widget.setLayout(layout)
+        layout3 = QVBoxLayout()
+        layout3.addWidget(vehicle_data_widget)
+        layout3.addWidget(vehicle_view_widget)
+
+        layout4 = QHBoxLayout()
+        layout4.addLayout(layout3)
+        layout4.addLayout(layout1)
+        layout4.addLayout(layout2)
+
+        central_widget.setLayout(layout4)
         self.setCentralWidget(central_widget)
 
-def main():
-    app = QApplication(sys.argv)
-    main_win = MainWindow()
-    main_win.show()
-    sys.exit(app.exec())
+    def keyReleaseEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
 
 if __name__ == '__main__':
-    main()
+    app = QApplication(sys.argv)
+    ex = data_view()
+    ex.show()
+    sys.exit(app.exec())
