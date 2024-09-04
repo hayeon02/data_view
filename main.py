@@ -117,6 +117,13 @@ class CarWidget(QWidget):
         painter.drawLine(QPoint(self.a + 105, self.b), QPoint(105, 80))
         painter.drawLine(QPoint((self.a + 215), self.b), QPoint(215, 80))
 
+        painter.setPen(QColor(0, 0, 0))
+        painter.drawLine(QPoint(123, -38), QPoint(105, 80))
+        painter.drawLine(QPoint(233, 0), QPoint(215, 80))
+
+        print(self.a)
+        print(self.b)
+
 class CameraView(QWidget):
     def __init__(self):
         super().__init__()
