@@ -1,9 +1,12 @@
 import sys
+import csv
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 import pyqtgraph as pg
 from functools import partial
 from PyQt5.QtCore import QEvent, Qt
+from docutils.nodes import option
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -38,7 +41,7 @@ class MainWindow(QMainWindow):
         self.table.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)  # 테이블 크기 조정 설정
         self.model = QStandardItemModel(self)  # 데이터 모델 설정
         self.splitter = QSplitter(self)  # splitter: 하나의 박스로 묶어서 크기 조절 가능하도록 하는 기능
-        self.model.setHorizontalHeaderLabels(["x", "y", "heading", "add"])  # 열 헤더 설정
+        self.model.setHorizontalHeaderLabels(["seq", "llatitude", "longitude", "llatitude_utm", "longitude_utm", "option"])  # 열 헤더 설정
         self.table.setModel(self.model)  # table에 model을 씌우는 형식
         self.table.horizontalHeader().setStretchLastSection(False)  # 마지막 열이 자동으로 늘어나지 않도록 설정
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -119,7 +122,7 @@ class MainWindow(QMainWindow):
             selected_rows = self.table.selectionModel().selectedRows()
             for row_index in selected_rows:
                 row = row_index.row()
-                self.model.setItem(row, 3, QStandardItem(str(index)))
+                self.model.setItem(row, 5, QStandardItem(str(index)))
 
                 if row < len(self.colors):
                     if index == 0:
@@ -146,35 +149,52 @@ class MainWindow(QMainWindow):
                         self.colors[row] = 'brown'
             self.update_graph()  # 그래프 업데이트
 
-        elif index == 11:
-            file_name, _ = QFileDialog.getSaveFileName(self, "Save File", '', "csv Files (*.csv);;All Files (*)")
-            if file_name:
-                with open(file_name, 'w') as f:
-                    for row in range(self.model.rowCount()):
-                        utm_x = self.model.item(row, 0).text()
-                        utm_y = self.model.item(row, 1).text()
-                        heading = self.model.item(row, 2).text()
-                        add = self.model.item(row, 3).text()
-                        f.write(f"{utm_x} {utm_y} {heading} {add}\n")
 
-                self.close()
+        elif index == 11:
+            file_name, _ = QFileDialog.getSaveFileName(self, "Save File", '', "csv Files (*.csv);; All Files (*)")
+
+            if file_name and not file_name.endswith('.csv'):
+                file_name += '.csv'
+
+            if file_name:
+                with open(file_name, 'w', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(["seq", "llatitude", "longitude", "llatitude_utm", "longitude_utm", "option"])
+                    for row in range(self.model.rowCount()):
+                        seq = self.model.item(row, 0).text()
+                        llatitude = self.model.item(row, 1).text()
+                        longitude = self.model.item(row, 2).text()
+                        llatitude_utm = self.model.item(row, 3).text()
+                        longitude_utm = self.model.item(row, 4).text()
+                        option = self.model.item(row, 5).text()
+                        writer.writerow([seq, llatitude, longitude, llatitude_utm, longitude_utm, option])
+
+                self.close()  # 파일 저장 후 창 닫기
 
     # 파일 데이터 불러오기
     def LoadData(self, filename):
         self.model.clear()  # 테이블 데이터 삭제
-        self.model.setHorizontalHeaderLabels(["x", "y", "heading", "add"])  # 불러왔을 때의 헤더
+        self.model.setHorizontalHeaderLabels(["seq", "llatitude", "longitude", "llatitude_utm", "longitude_utm", "option"])  # 불러왔을 때의 헤더
         self.utm_x.clear()  # 좌표 데이터 초기화
         self.utm_y.clear()
 
         try:
             with open(filename, 'r') as f:
-                for line in f:
-                    utm_x, utm_y, heading = line.strip().split()
+                reader = csv.reader(f)
+                next(reader)
+                for row in reader:
+                    if len(row) != 6:
+                        print(f"잘못된 데이터 형식: {row}")
+                        continue
+
+                    seq, llatitude, longitude, utm_x, utm_y, option = row
                     self.model.appendRow([
+                        QStandardItem(seq),
+                        QStandardItem(llatitude),
+                        QStandardItem(longitude),
                         QStandardItem(utm_x),
                         QStandardItem(utm_y),
-                        QStandardItem(heading),
-                        QStandardItem(""),
+                        QStandardItem(option),
                     ])
                     self.utm_x.append(float(utm_x))
                     self.utm_y.append(float(utm_y))
