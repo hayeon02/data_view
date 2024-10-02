@@ -9,12 +9,14 @@ from functools import partial
 from PyQt5.QtCore import *
 from sensor_msgs.msg import NavSatFix
 
-class MainWindow1(QMainWindow):
+class MainWindow3(QMainWindow):
     gps_signal = pyqtSignal(float, float)
+    # pyqtSignal 신호: 특정 이벤트가 발생했음을 다른 객체에 알려주는 역할
     def __init__(self):
         super().__init__()
         self.utm_x = []
         self.utm_y = []
+        self.colors = []
         self.lastClicked = []
         self.current_point = None
         self.first_click_index = None
@@ -24,8 +26,6 @@ class MainWindow1(QMainWindow):
 
         self.setupUI()
         self.setup()
-
-        self.gps_signal.connect(self.update_location)
 
     def setupUI(self):
         self.setGeometry(100, 100, 1400, 900)
@@ -54,23 +54,24 @@ class MainWindow1(QMainWindow):
         self.model = QStandardItemModel(self)  # 데이터 모델 설정
         self.splitter = QSplitter(self)  # splitter: 하나의 박스로 묶어서 크기 조절 가능하도록 하는 기능
         self.table.setModel(self.model)  # table에 model을 씌우는 형식
-        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)  # 행 전체 선택
-        self.table.setSelectionMode(QAbstractItemView.MultiSelection)  # 다중 선택 가능 모드
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows) # 행 전체 선택
+        self.table.setSelectionMode(QAbstractItemView.MultiSelection) # 다중 선택 가능 모드
         self.table.viewport().installEventFilter(self)  # 이벤트 필터
 
         self.splitter.addWidget(self.table)
 
+    # 전체 드레그 일괄 해제
     def eventFilter(self, source, event):
         if event.type() == QEvent.MouseButtonPress and source is self.table.viewport():
             modifiers = QApplication.keyboardModifiers()
             if not (modifiers == Qt.ControlModifier or modifiers == Qt.ShiftModifier):
                 self.table.clearSelection()
-        return super(MainWindow1, self).eventFilter(source, event)
+        return super(MainWindow3, self).eventFilter(source, event)
 
     # 파일(그래프)
     def graph(self):
         self.graphData.clear()
-        self.colors = ['pink'] * len(self.utm_x)  # 초기 색상을 모두 파란색으로 설정
+        # self.colors = ['pink'] * len(self.utm_x)  # 초기 색상
 
         spots = [{'pos': (self.utm_x[i], self.utm_y[i]), 'brush': pg.mkBrush(self.colors[i])} for i in range(len(self.utm_x))]
 
@@ -79,7 +80,8 @@ class MainWindow1(QMainWindow):
         self.graphData.addItem(self.scatter)
 
     def update_graph(self):
-        self.graphData.clear()  # 그래프 초기화
+        self.graphData.clear()
+        # utm_x의 길이 만큼 변경
         spots = [{'pos': (self.utm_x[i], self.utm_y[i]), 'brush': pg.mkBrush(self.colors[i])} for i in range(len(self.utm_x))]
         self.scatter = pg.ScatterPlotItem(spots=spots, symbol='o', size=10)
         self.scatter.sigClicked.connect(self.clicked)
@@ -114,7 +116,6 @@ class MainWindow1(QMainWindow):
 
         btn_table.setColumnCount(1)
         btn_table.setRowCount(12)
-
         btn_table_column = ["버튼"]
         btn_table.setHorizontalHeaderLabels(btn_table_column)
 
@@ -129,81 +130,111 @@ class MainWindow1(QMainWindow):
 
     def button_clicked(self, index):
         if index <= 10:
-            selected_rows = self.table.selectionModel().selectedRows()
-            for row_index in selected_rows:
-                row = row_index.row()
-                self.model.setItem(row, 3, QStandardItem(str(index)))
+            selected_rows = self.table.selectionModel().selectedRows() # selectedRows: 현재 선택된 행의 인텍스 반환
+            for row_index in selected_rows: # 선택된 행 처리
+                row = row_index.row() #선택된 행 번호 반환
+                self.model.setItem(row, 5, QStandardItem(str(index))) # 선택된 행에 5번째 열을 index값으로 변경
 
-                if row < len(self.colors):
-                    if index == 0:
-                        self.colors[row] = 'green'
-                    elif index == 1:
-                        self.colors[row] = 'blue'
-                    elif index == 2:
-                        self.colors[row] = 'red'
-                    elif index == 3:
-                        self.colors[row] = 'yellow'
-                    elif index == 4:
-                        self.colors[row] = 'white'
-                    elif index == 5:
-                        self.colors[row] = 'cyan'
-                    elif index == 6:
-                        self.colors[row] = 'purple'
-                    elif index == 7:
-                        self.colors[row] = 'orange'
-                    elif index == 8:
-                        self.colors[row] = 'gray'
-                    elif index == 9:
-                        self.colors[row] = 'black'
-                    elif index == 10:
-                        self.colors[row] = 'brown'
-            self.update_graph()  # 그래프 업데이트
+                if index == 0:
+                    self.colors[row] = 'green'
+                elif index == 1:
+                    self.colors[row] = 'blue'
+                elif index == 2:
+                    self.colors[row] = 'red'
+                elif index == 3:
+                    self.colors[row] = 'yellow'
+                elif index == 4:
+                    self.colors[row] = 'white'
+                elif index == 5:
+                    self.colors[row] = 'cyan'
+                elif index == 6:
+                    self.colors[row] = 'purple'
+                elif index == 7:
+                    self.colors[row] = 'orange'
+                elif index == 8:
+                    self.colors[row] = 'gray'
+                elif index == 9:
+                    self.colors[row] = 'black'
+                elif index == 10:
+                    self.colors[row] = 'brown'
+
+            self.update_graph()
 
         elif index == 11:
-            file_name, _ = QFileDialog.getSaveFileName(self, "Save File", '', "csv Files (*.csv);;All Files (*)")
+            file_name, _ = QFileDialog.getSaveFileName(self, "Save File", '', "csv Files (*.csv);; All Files (*)")
 
+             # .csv로 끝나지 않는 경우
             if file_name and not file_name.endswith('.csv'):
                 file_name += '.csv'
 
             if file_name:
                 with open(file_name, 'w', newline='') as f:
                     writer = csv.writer(f)
-                    writer.writerow(["x", "y", "z", "option"])
+                    writer.writerow(["seq", "latitude", "longitude", "latitude_utm", "longitude_utm", "option"])
                     for row in range(self.model.rowCount()):
-                        utm_x = self.model.item(row, 0).text()
-                        utm_y = self.model.item(row, 1).text()
-                        z = self.model.item(row, 2).text()
-                        option = self.model.item(row, 3).text()
-                        writer.writerow([utm_x, utm_y, z, option])
+                        seq = self.model.item(row, 0).text()
+                        latitude = self.model.item(row, 1).text()
+                        longitude = self.model.item(row, 2).text()
+                        latitude_utm = self.model.item(row, 3).text()
+                        longitude_utm = self.model.item(row, 4).text()
+                        option = self.model.item(row, 5).text()
+                        writer.writerow([seq, latitude, longitude, latitude_utm, longitude_utm, option])
 
                 self.close()
 
     # 파일 데이터 불러오기
     def LoadData(self, filename):
-        self.model.clear()  # 테이블 데이터 삭제
-        self.model.setHorizontalHeaderLabels(["x", "y", "z", "add"])  # 불러왔을 때의 헤더
+        self.model.clear()
+        self.model.setHorizontalHeaderLabels(["seq", "latitude", "longitude", "latitude_utm", "longitude_utm", "option"])
         self.utm_x.clear()
         self.utm_y.clear()
+        self.colors.clear()
 
         try:
             with open(filename, 'r') as f:
                 reader = csv.reader(f)
                 next(reader)
                 for row in reader:
-                    if len(row) != 3:
+                    if len(row) != 6:
                         print("잘못된 데이터 형식")
                         continue
 
-                for line in f:
-                    utm_x, utm_y, z, option = line.strip().split()
+                    seq, latitude, longitude, utm_x, utm_y, option = row
                     self.model.appendRow([
+                        QStandardItem(seq),
+                        QStandardItem(latitude),
+                        QStandardItem(longitude),
                         QStandardItem(utm_x),
                         QStandardItem(utm_y),
-                        QStandardItem(z),
                         QStandardItem(option),
                     ])
                     self.utm_x.append(float(utm_x))
                     self.utm_y.append(float(utm_y))
+
+                    if option == "0":
+                        self.colors.append('green')
+                    elif option == "1":
+                        self.colors.append('blue')
+                    elif option == "2":
+                        self.colors.append('red')
+                    elif option == "3":
+                        self.colors.append('yellow')
+                    elif option == "4":
+                        self.colors.append('white')
+                    elif option == "5":
+                        self.colors.append('cyan')
+                    elif option == "6":
+                        self.colors.append('purple')
+                    elif option == "7":
+                        self.colors.append('orange')
+                    elif option == "8":
+                        self.colors.append('gray')
+                    elif option == "9":
+                        self.colors.append('black')
+                    elif option == "10":
+                        self.colors.append('brown')
+                    else:
+                        self.colors.append('pink')
 
             self.table.resizeColumnsToContents()  # 열 크기 자동 조정
             self.graph()
@@ -225,38 +256,6 @@ class MainWindow1(QMainWindow):
         self.gps_signal.emit(self.latitude_utm, self.longitude_utm)
         # emit: 신호를 받았을 때 호출되는 함수, 신호가 발생하면 그에 대응하여 작업 수행, 값을 전달하면서 신호 발생
 
-    def update_location(self, latitude_utm, longitude_utm):
-        if self.current_point is not None:
-            self.graphData.removeItem(self.current_point)
-
-        self.current_point = self.graphData.plot([latitude_utm], [longitude_utm], pen=None, symbol='+', symbolBrush='red', symbolSize=15)
-
-        self.update_table()
-
-    def currentLocation(self):
-        rospy.init_node('current_gps')
-        rospy.Subscriber('/ublox_gps/fix', NavSatFix, self.gps_callback)
-
-    def current_data(self):
-        self.current_table = QTableWidget(self)
-        self.current_table.setFixedWidth(120)
-
-        self.current_table.setColumnCount(1)
-        self.current_table.setRowCount(2)
-        current_table_column = ["현재 좌표(utm)"]
-        self.current_table.setHorizontalHeaderLabels(current_table_column)
-
-        self.current_table.setItem(0, 0, QTableWidgetItem(str(self.latitude_utm)))
-        self.current_table.setItem(1, 0, QTableWidgetItem(str(self.longitude_utm)))
-        # setItem: 테이블의 셀에 텍스트나 데이터를 설정할 떄 사용
-        # setCellWidget: QWidget을 삽입할 때 사용
-
-        return self.current_table
-
-    def update_table(self):
-        self.current_table.setItem(0, 0, QTableWidgetItem(str(self.latitude_utm)))
-        self.current_table.setItem(1, 0, QTableWidgetItem(str(self.longitude_utm)))
-
     # 위치
     def setup(self):
         file_layout = QVBoxLayout()
@@ -273,9 +272,6 @@ class MainWindow1(QMainWindow):
 
         self.point_label = QLabel("선택한 포인트: ", self)
         etc_layout.addWidget(self.point_label)
-
-        self.current_data_table = self.current_data()
-        etc_layout.addWidget(self.current_data_table)
 
         data_layout = QHBoxLayout()
         data_layout.addWidget(file_widget)
@@ -332,6 +328,6 @@ class MainWindow1(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    main = MainWindow1()
+    main = MainWindow3()
     main.show()
     app.exec_()

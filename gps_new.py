@@ -9,7 +9,6 @@ from functools import partial
 from PyQt5.QtCore import *
 from sensor_msgs.msg import NavSatFix
 
-
 class MainWindow2(QMainWindow):
     gps_signal = pyqtSignal(float, float)
     # pyqtSignal 신호: 특정 이벤트가 발생했음을 다른 객체에 알려주는 역할
@@ -17,6 +16,7 @@ class MainWindow2(QMainWindow):
         super().__init__()
         self.utm_x = []
         self.utm_y = []
+        self.colors = []
         self.lastClicked = []
         self.current_point = None
         self.first_click_index = None
@@ -73,9 +73,9 @@ class MainWindow2(QMainWindow):
     # 파일(그래프)
     def graph(self):
         self.graphData.clear()
-        self.colors = ['pink'] * len(self.utm_x)  # 초기 색상
+        # self.colors = ['pink'] * len(self.utm_x)  # 초기 색상
 
-        spots = [{'pos': (self.utm_x[i], self.utm_y[i]), 'brush': pg.mkBrush('pink')} for i in range(len(self.utm_x))]
+        spots = [{'pos': (self.utm_x[i], self.utm_y[i]), 'brush': pg.mkBrush(self.colors[i])} for i in range(len(self.utm_x))]
 
         self.scatter = pg.ScatterPlotItem(spots=spots, symbol='o', size=10)
         self.scatter.sigClicked.connect(self.clicked)
@@ -190,6 +190,7 @@ class MainWindow2(QMainWindow):
         self.model.setHorizontalHeaderLabels(["seq", "latitude", "longitude", "latitude_utm", "longitude_utm", "option"])
         self.utm_x.clear()
         self.utm_y.clear()
+        self.colors.clear()
 
         try:
             with open(filename, 'r') as f:
@@ -211,6 +212,31 @@ class MainWindow2(QMainWindow):
                     ])
                     self.utm_x.append(float(utm_x))
                     self.utm_y.append(float(utm_y))
+
+                    if option == "0":
+                        self.colors.append('green')
+                    elif option == "1":
+                        self.colors.append('blue')
+                    elif option == "2":
+                        self.colors.append('red')
+                    elif option == "3":
+                        self.colors.append('yellow')
+                    elif option == "4":
+                        self.colors.append('white')
+                    elif option == "5":
+                        self.colors.append('cyan')
+                    elif option == "6":
+                        self.colors.append('purple')
+                    elif option == "7":
+                        self.colors.append('orange')
+                    elif option == "8":
+                        self.colors.append('gray')
+                    elif option == "9":
+                        self.colors.append('black')
+                    elif option == "10":
+                        self.colors.append('brown')
+                    else:
+                        self.colors.append('pink')
 
             self.table.resizeColumnsToContents()  # 열 크기 자동 조정
             self.graph()
