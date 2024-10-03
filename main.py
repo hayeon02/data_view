@@ -56,7 +56,7 @@ class VehicleView(QWidget):
         self.table.setItem(0, 0, QTableWidgetItem(str(self.rpm)))
         self.table.setItem(0, 1, QTableWidgetItem(str(self.steer)))
         self.table.setItem(0, 2, QTableWidgetItem(self.mode))
-        self.car_widget.update_line()  # Update CarWidget when data changes
+        self.car_widget.update_line()
 
     def update_rpm(self, msg: UInt32):
         self.rpm = msg.data

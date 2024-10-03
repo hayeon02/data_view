@@ -4,15 +4,16 @@ from PySide6.QtWidgets import *
 from PySide6.QtGui import *
 from PySide6.QtCore import *
 from std_msgs.msg import UInt32
-from sensor_msgs.msg import Joy
+from sensor_msgs.msg import Joy, CompressedImage, CameraInfo, NavSatFix
 from cv_bridge import CvBridge
-from sensor_msgs.msg import Image
+from threading import Thread
 
 class RosTopicViewer(QWidget):
     def __init__(self):
         super().__init__()
         self.initUI()
         rospy.init_node('ros_topic_viewer')
+        self.update_topic_list()
 
     def initUI(self):
         layout = QVBoxLayout()
@@ -23,6 +24,7 @@ class RosTopicViewer(QWidget):
 
         self.topic_list_widget = QListWidget(self)
         self.topic_list_widget.setSelectionMode(QListWidget.MultiSelection)  # 다중 선택 가능
+
         self.start_btn = QPushButton('Start', self)
         self.start_btn.clicked.connect(self.start_mode)
 
@@ -60,22 +62,25 @@ class MainView(QDialog):
     def __init__(self, selected_topics):
         super().__init__()
         self.setGeometry(500, 100, 400, 300)
+        self.bridge = CvBridge()
+        self.selected_topics = selected_topics
         self.ui()
+        self.TopicToNode()
 
     def ui(self):
         self.label1 = QLabel(self)
         self.label1.setAlignment(Qt.AlignCenter)
+        self.label1.setFixedSize(640, 480)
 
         self.label2 = QLabel(self)
         self.label2.setAlignment(Qt.AlignCenter)
+        self.label2.setFixedSize(640, 480)
 
         self.layout = QVBoxLayout(self)
         self.layout.addWidget(self.label1)
         self.layout.addWidget(self.label2)
 
-    def TopicToNode(self, selected_topics):
-        self.bridge = CvBridge()
-        self.selected_topics = selected_topics
+    def TopicToNode(self):
         for topic in self.selected_topics:
             if topic == '/current_motor_RPM':
                 self.rpm = 0
@@ -89,12 +94,16 @@ class MainView(QDialog):
                 self.mode = 'M'
                 self.mode_sub = rospy.Subscriber('/manual_status', Joy, self.update_mode)
 
-            elif topic == '/usb_cam_1/image_raw':
-                self.camera_sub = rospy.Subscriber('/usb_cam_1/image_raw', Image, self.update_camera)
+            elif topic == '/usb_cam/image_raw/compressed':
+                self.camera_sub = rospy.Subscriber('/usb_cam/image_raw/compressed', CompressedImage, self.update_camera)
 
-            elif topic == '/usb_cam_2/image_raw':
-                self.camera_sub = rospy.Subscriber('/usb_cam_2/image_raw', Image, self.update_camera)
 
+
+            elif topic == '/zed_node/left/camera_info':
+                self.camera_sub_zed = rospy.Subscriber('/zed_node/left/camera_info', CameraInfo, self.update_camera_zed)
+
+            elif topic == '/ublox_gps/fix':
+                self.gps_sub = rospy.Subscriber('/ublox_gps/fix', NavSatFix, self.update_gps)
 
     def update_rpm(self, msg: UInt32):
         self.rpm = msg.data
@@ -105,8 +114,8 @@ class MainView(QDialog):
     def update_mode(self, msg: Joy):
         self.mode = 'A' if msg.buttons[4] == 0 else 'M'
 
-    def update_camera(self, msg: Image):
-        cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8') #msg to opencv
+    def update_camera(self, msg: CompressedImage):
+        cv_image = self.bridge.compressed_imgmsg_to_cv2(msg, desired_encoding='bgr8')
 
         height, width, channel = cv_image.shape
         bytes_per_line = 3 * width
@@ -114,8 +123,23 @@ class MainView(QDialog):
 
         pixmap = QPixmap.fromImage(q_image)
         pixmap = pixmap.scaled(500, 400, Qt.KeepAspectRatio)
-        self.camera_label.setPixmap(pixmap)
+
         self.label1.setPixmap(pixmap)
+
+    def update_camera_zed(self, msg: CameraInfo):
+        cv_image = self.bridge.compressed_imgmsg_to_cv2(msg, desired_encoding='bgr8')
+
+        height, width, channel = cv_image.shape
+        bytes_per_line = 3 * width
+        q_image = QImage(cv_image.data, width, height, bytes_per_line, QImage.Format_BGR888)
+
+        pixmap = QPixmap.fromImage(q_image)
+        pixmap = pixmap.scaled(500, 400, Qt.KeepAspectRatio)
+
+        self.label2.setPixmap(pixmap)
+
+    def update_gps(self, msg: NavSatFix):
+        pass
 
     def keyReleaseEvent(self, event):
         if event.key() == Qt.Key_Escape:
@@ -125,4 +149,11 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     viewer = RosTopicViewer()
     viewer.show()
+
+    def ros_spin():
+        rospy.spin()
+
+    ros_thread = Thread(target=ros_spin)
+    ros_thread.start()
+
     sys.exit(app.exec())
